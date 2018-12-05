@@ -10,13 +10,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.superbiz.moviefun.blobstore.Blob;
+import org.superbiz.moviefun.blobstore.BlobStore;
 import org.superbiz.moviefun.blobstore.FileStore;
 import sun.nio.ch.IOUtil;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,11 +30,11 @@ import static java.nio.file.Files.readAllBytes;
 public class AlbumsController {
 
     private final AlbumsBean albumsBean;
-    private final FileStore fileStore;
+    private final BlobStore blobStore;
 
-    public AlbumsController(AlbumsBean albumsBean, FileStore fileStore) {
+    public AlbumsController(AlbumsBean albumsBean, BlobStore blobStore) {
         this.albumsBean = albumsBean;
-        this.fileStore = fileStore;
+        this.blobStore = blobStore;
     }
 
 
@@ -55,14 +53,14 @@ public class AlbumsController {
     @PostMapping("/{albumId}/cover")
     public String uploadCover(@PathVariable long albumId, @RequestParam("file") MultipartFile uploadedFile) throws IOException {
         Blob blob = new Blob(getCoverName(albumId) + uploadedFile.getName(), uploadedFile.getInputStream(), uploadedFile.getContentType());
-        fileStore.put(blob);
+        blobStore.put(blob);
 
         return format("redirect:/albums/%d/", albumId);
     }
 
     @GetMapping("/{albumId}/cover")
     public HttpEntity<byte[]> getCover(@PathVariable long albumId) throws IOException, URISyntaxException {
-        final Optional<Blob> maybeBlob = fileStore.get(getCoverName(albumId) + "file");
+        final Optional<Blob> maybeBlob = blobStore.get(getCoverName(albumId) + "file");
 
         final Blob blob = maybeBlob.orElseGet(this::defaultCover);
 
@@ -75,10 +73,9 @@ public class AlbumsController {
     private Blob defaultCover() {
         Blob defaultBlob = null;
         try {
-            Path coverFilePath = Paths.get(getSystemResource("default-cover.jpg").toURI());
-            defaultBlob = new Blob("default-cover.jpg", new FileInputStream(coverFilePath.toString()),new Tika().detect(coverFilePath));
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
+            ClassLoader classLoader = AlbumsController.class.getClassLoader();
+            InputStream is = classLoader.getResourceAsStream("default-cover.jpg");
+            defaultBlob = new Blob("default-cover.jpg", is ,new Tika().detect(is));
         } catch (IOException e) {
             e.printStackTrace();
         }
