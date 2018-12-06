@@ -5,6 +5,7 @@ import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.superbiz.moviefun.blobstore.Blob;
 import org.superbiz.moviefun.blobstore.BlobStore;
@@ -24,10 +25,12 @@ public class AlbumsUpdater {
     private final ObjectReader objectReader;
     private final BlobStore blobStore;
     private final AlbumsBean albumsBean;
+    private final LockRepo lockRepo;
 
-    public AlbumsUpdater(BlobStore blobStore, AlbumsBean albumsBean) {
+    public AlbumsUpdater(BlobStore blobStore, AlbumsBean albumsBean, LockRepo lockRepo) {
         this.blobStore = blobStore;
         this.albumsBean = albumsBean;
+        this.lockRepo = lockRepo;
 
         CsvSchema schema = CsvSchema.builder()
             .addColumn("artist")
@@ -37,6 +40,10 @@ public class AlbumsUpdater {
             .build();
 
         objectReader = new CsvMapper().readerFor(Album.class).with(schema);
+    }
+
+    public boolean acquireLock() throws DataIntegrityViolationException {
+        return lockRepo.acquireLock();
     }
 
     public void update() throws IOException {

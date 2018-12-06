@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS locker;
+
+CREATE TABLE locker (lst_updt_dt TIMESTAMP NULL DEFAULT NULL);
+
+INSERT INTO locker (lst_updt_dt) VALUES (NULL);
